@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
 
 env:
-  MANIFEST_BRANCH: "7.1"
+  MANIFEST_BRANCH: "12.1"
+  MANIFEST_TREE: "aosp"
   DEVICE_TREE_URL: "https://github.com/mikael796/android_device_huawei_honor8s"
   DEVICE_TREE_BRANCH: "android-9.0"
   DEVICE_PATH: "device/huawei/honor8s"
@@ -50,7 +51,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         distribution: zulu
-        java-version: 8
+        java-version: 17
 
     - name: Install repo
       run: |
@@ -65,7 +66,7 @@ jobs:
         cd workspace
         git config --global user.name "${GITHUB_ACTOR}"
         git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
-        repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_omni.git -b twrp-${MANIFEST_BRANCH}
+        repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_${MANIFEST_TREE}.git -b twrp-${MANIFEST_BRANCH}
 
     - name: Repo Sync
       run: |
@@ -101,7 +102,7 @@ jobs:
         cat device/huawei/honor8s/AndroidProducts.mk 2>/dev/null || echo "!!! AndroidProducts.mk NOT FOUND"
         echo "=== DEBUG end ==="
         export ALLOW_MISSING_DEPENDENCIES=true
-        lunch omni_${DEVICE_NAME}-eng && make ${BUILD_TARGET}image -j$(nproc --all)
+        lunch twrp_${DEVICE_NAME}-eng && make ${BUILD_TARGET}image -j$(nproc --all)
       working-directory: workspace
 
     - name: Repack for Huawei recovery_ramdisk
@@ -123,7 +124,7 @@ jobs:
         body: |
           TWRP for HONOR 8S (MT6761)
 
-          Manifest: twrp-${{ env.MANIFEST_BRANCH }} (omni)
+          Manifest: twrp-${{ env.MANIFEST_BRANCH }} (aosp)
           Target: ${{ env.BUILD_TARGET }}.img
 
           FLASH INSTRUCTIONS:
