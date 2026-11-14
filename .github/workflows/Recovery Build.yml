@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  MANIFEST_BRANCH: "9.0"
+  MANIFEST_BRANCH: "7.1"
   DEVICE_TREE_URL: "https://github.com/mikael796/android_device_huawei_honor8s"
   DEVICE_TREE_BRANCH: "android-9.0"
   DEVICE_PATH: "device/huawei/honor8s"
