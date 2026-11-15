@@ -77,6 +77,17 @@ jobs:
         git clone ${DEVICE_TREE_URL} -b ${DEVICE_TREE_BRANCH} ./${DEVICE_PATH}
       working-directory: workspace
 
+    - name: Patch libbinder arm32 version script
+      run: |
+        sed -i \
+          -e '/IPCThreadState10freeBuffer/d' \
+          -e '/Parcel19ipcSetDataReference/d' \
+          -e '/TextOutput.*RKT_/d' \
+          frameworks/native/libs/binder/libbinder.arm32.map
+        echo "patched libbinder.arm32.map:"
+        grep -c LIBBINDER frameworks/native/libs/binder/libbinder.arm32.map || true
+      working-directory: workspace
+
     - name: Install Python 2
       run: |
         sudo apt -y install python2 || true
