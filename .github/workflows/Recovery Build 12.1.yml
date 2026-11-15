@@ -1,4 +1,4 @@
-name: Recovery Build
+name: Recovery Build 12.1
 
 on:
   workflow_dispatch:
@@ -7,9 +7,10 @@ env:
   MANIFEST_BRANCH: "12.1"
   MANIFEST_TREE: "aosp"
   DEVICE_TREE_URL: "https://github.com/mikael796/android_device_huawei_honor8s"
-  DEVICE_TREE_BRANCH: "android-9.0"
+  DEVICE_TREE_BRANCH: "android-12.1"
   DEVICE_PATH: "device/huawei/honor8s"
   DEVICE_NAME: "honor8s"
+  PRODUCT_PREFIX: "twrp"
   BUILD_TARGET: "recovery"
 
 jobs:
@@ -19,18 +20,16 @@ jobs:
     - name: Display Build Configuration
       run: |
         echo "::group::Build Configuration"
-        echo "Manifest Branch: ${MANIFEST_BRANCH} (omni)"
+        echo "Manifest: twrp-${MANIFEST_BRANCH} (aosp, native EROFS)"
         echo "Device Tree: ${DEVICE_TREE_URL} (${DEVICE_TREE_BRANCH})"
         echo "Device Path: ${DEVICE_PATH}"
-        echo "Device Name: ${DEVICE_NAME}"
-        echo "Build Target: ${BUILD_TARGET}.img"
+        echo "Product: ${PRODUCT_PREFIX}_${DEVICE_NAME}"
         echo "Output: recovery.img + repacked recovery_ramdisk.img (Huawei flashable)"
         echo "::endgroup::"
 
     - name: Check Out
       uses: actions/checkout@v4
 
-    # Cleanup The Actions Workspace Using Custom Composite Run Actions
     - name: Cleanup
       uses: rokibhasansagar/slimhub_actions@main
 
@@ -66,7 +65,7 @@ jobs:
         cd workspace
         git config --global user.name "${GITHUB_ACTOR}"
         git config --global user.email "${GITHUB_ACTOR_ID}+${GITHUB_ACTOR}@users.noreply.github.com"
-        repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_${MANIFEST_TREE}.git -b twrp-${MANIFEST_BRANCH}
+        repo init --depth=1 -u https://github.com/minimal-manifest-twrp/platform_manifest_twrp_aosp.git -b twrp-${MANIFEST_BRANCH}
 
     - name: Repo Sync
       run: |
@@ -77,13 +76,6 @@ jobs:
       run: |
         git clone ${DEVICE_TREE_URL} -b ${DEVICE_TREE_BRANCH} ./${DEVICE_PATH}
       working-directory: workspace
-
-    - name: Sync Device Dependencies
-      run: |
-        bash ${GITHUB_WORKSPACE}/scripts/convert.sh ${DEVICE_PATH}/omni.dependencies
-        repo sync -j$(nproc --all)
-      working-directory: workspace
-      continue-on-error: true
 
     - name: Install Python 2
       run: |
@@ -96,13 +88,8 @@ jobs:
     - name: Building recovery
       run: |
         source build/envsetup.sh
-        echo "=== DEBUG: device tree contents ==="
-        ls -la device/huawei/honor8s/ 2>/dev/null || echo "!!! device/huawei/honor8s MISSING"
-        find device -maxdepth 3 -name "AndroidProducts.mk" 2>/dev/null || true
-        cat device/huawei/honor8s/AndroidProducts.mk 2>/dev/null || echo "!!! AndroidProducts.mk NOT FOUND"
-        echo "=== DEBUG end ==="
         export ALLOW_MISSING_DEPENDENCIES=true
-        lunch twrp_${DEVICE_NAME}-eng && make ${BUILD_TARGET}image -j$(nproc --all)
+        lunch ${PRODUCT_PREFIX}_${DEVICE_NAME}-eng && make ${BUILD_TARGET}image -j$(nproc --all)
       working-directory: workspace
 
     - name: Repack for Huawei recovery_ramdisk
@@ -118,19 +105,18 @@ jobs:
         files: |
           workspace/out/target/product/${{ env.DEVICE_NAME }}/${{ env.BUILD_TARGET }}.img
           workspace/out/target/product/${{ env.DEVICE_NAME }}/recovery_ramdisk.img
-          workspace/out/target/product/${{ env.DEVICE_NAME }}/ramdisk-recovery.*
-        name: HONOR 8S (TWRP)
-        tag_name: ${{ github.run_id }}
+        name: HONOR 8S (TWRP 12.1, native EROFS)
+        tag_name: twrp121-${{ github.run_id }}
         body: |
-          TWRP for HONOR 8S (MT6761)
+          TWRP for HONOR 8S (MT6761) — twrp-12.1 (aosp)
 
-          Manifest: twrp-${{ env.MANIFEST_BRANCH }} (aosp)
-          Target: ${{ env.BUILD_TARGET }}.img
+          Native EROFS support: system/vendor/product/odm/cust/version
+          mount and unmount from the GUI.
 
           FLASH INSTRUCTIONS:
           - recovery_ramdisk.img — flash this to the recovery_ramdisk partition
             (dd if=recovery_ramdisk.img of=/dev/block/platform/bootdevice/by-name/recovery_ramdisk)
-          - recovery.img — stock-style image with kernel included, for reference
-            or fastboot boot testing only. Do NOT flash to boot!
+          - recovery.img — full boot image for fastboot boot testing only.
+            Do NOT flash to boot!
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
